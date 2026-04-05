@@ -1,0 +1,43 @@
+name: Ultimate Stable Build
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧹 Total System Wipe (Space Saver)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/share/swift /usr/local/share/powershell
+          sudo docker image prune -a -f
+          sudo apt-get clean
+
+      - name: 🛠️ Install Tools
+        run: sudo apt-get update && sudo apt-get install -y xorriso squashfs-tools wget curl
+
+      - name: 💿 Core ISO Process (Xorriso Method)
+        run: |
+          # تحميل النسخة برابط مباشر
+          curl -L -o base.iso https://mirrors.kernel.org/ubuntu-releases/24.04/ubuntu-24.04-desktop-amd64.iso
+          
+          # فك الـ ISO بطريقة xorriso (الأكثر استقراراً)
+          mkdir -p x
+          osirrox -indev base.iso -extract / x/
+          chmod -R +w x/
+          rm base.iso
+          
+          # تنفيذ سكريبت التخصيص الشامل
+          chmod +x build.sh
+          sudo -E DEBIAN_FRONTEND=noninteractive ./build.sh
+          
+          # تجميع الـ ISO النهائي
+          sudo xorriso -as mkisofs -r -V "Ubuntu-Plus-Ultimate" -o Ubuntu-Plus-Final.iso x/
+
+      - name: 📤 Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ubuntu-Plus-Final-ISO
+          path: Ubuntu-Plus-Final.iso
+          retention-days: 90
